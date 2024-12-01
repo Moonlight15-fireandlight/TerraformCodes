@@ -1,0 +1,14 @@
+*.tfstate
+*.tfstate.*
+
+*.tfvars
+
+variables.tf
+
+*/variables.tf
+
+practice_foreach/
+
+testingterraform/
+
+.terraform/
