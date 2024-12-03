@@ -23,15 +23,22 @@
 
 module "created_instance" {
 
-  source        = "./modules/Ec2instance"
-  region        = "us-east-1"
-  instance_type = "t2.micro"
+  source        = "./modules/Ec2instance" #"(child module)"
+  region        = var.region
+  instance_type = lookup(var.instance_type, terraform.workspace)
 
   providers = {
-    aws = aws.east #
+    #aws = aws.eas #
   }
 
   #ami = "ami-0ea3c35c5c3284d82"
+
+}
+
+module "assign_eip" {
+
+  source       = "./modules/ElasticIp"
+  instance_aws = module.created_instance.aws_instance_id
 
 }
 
@@ -43,3 +50,5 @@ module "created_instance" {
 #  create_iam_user_login_profile = false
 # insert the 1 required variable here
 #}
+
+#module 

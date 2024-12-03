@@ -118,7 +118,7 @@ resource "aws_instance" "instancelinux01" {
   #Numero de servidores en base al tipo de instancias que se muestra en la variable instance type
   #count = length(var.instance_type)
 
-  ami           = data.aws_ami.ubuntu.id
+  ami           = var.ami
   instance_type = var.instance_type
   key_name      = "DockerOregon"
   #count = length(var.instance_type)
@@ -134,7 +134,7 @@ resource "aws_instance" "instancelinux01" {
 
   tags = {
 
-    Name = " ${var.region} - server-nginx"
+    Name = " ${var.region} - ${terraform.workspace} "
     #environment = each.value.environment
 
   }
@@ -225,14 +225,15 @@ resource "aws_security_group" "securitygroup1" {
 
 
 
-output "publicip_instances" {
+output "aws_instance_id" {
 
-  value = aws_instance.instancelinux01
+  value = aws_instance.instancelinux01.id
 
   #value = aws_instance.instancelinux01[each.key].public_ip
   #value = { for p in sort(keys(var.project)) : p => aws_instance.instancelinux01[p].public_ip }
 
   #insta = aws_instance.instancelinux01["terraform"].public_ip
+
 }
 
 #output publicip_instance_dev {
