@@ -4,6 +4,7 @@
 #}
 
 data "aws_availability_zones" "available" {
+
   state = "available"
 
   filter {
@@ -28,6 +29,14 @@ data "aws_ami" "ubuntu" {
 resource "aws_vpc" "main_vpc" {
 
   cidr_block = var.vpc_cidr
+
+  provider = {
+    
+    aws = aws.case1
+    aws = aws.case2
+    
+  }
+  
 
   enable_dns_hostnames = true
 
@@ -110,15 +119,13 @@ resource "aws_route_table_association" "toprivate" {
   route_table_id = aws_route_table.private.id
 }
 
-
-
 resource "aws_instance" "instancelinux01" {
   #name = "terraform-testing" #agregar un nombre a la instancia
 
   #Numero de servidores en base al tipo de instancias que se muestra en la variable instance type
   #count = length(var.instance_type)
 
-  ami           = var.ami
+  ami           = data.aws_ami.ubuntu.id
   instance_type = var.instance_type
   key_name      = "DockerOregon"
   #count = length(var.instance_type)
@@ -134,7 +141,8 @@ resource "aws_instance" "instancelinux01" {
 
   tags = {
 
-    Name = " ${var.region} - ${terraform.workspace} "
+    #Name = " ${var.region} - ${terraform.workspace} "
+    Name = "server-terraform-${var.region}"
     #environment = each.value.environment
 
   }

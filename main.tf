@@ -21,26 +21,51 @@
 #
 #}
 
+provider "aws" {
+
+  alias  = "west-1"
+  region = "us-west-1"
+
+}
+
+provider "aws" {
+
+  alias = "west-2"
+  region = "us-west-2"
+
+}
+
 module "created_instance" {
 
+  for_each = var.create_ec2
+
   source        = "./modules/Ec2instance" #"(child module)"
-  region        = var.region
-  instance_type = lookup(var.instance_type, terraform.workspace)
+  region        = each.value.region
+  #instance_type = lookup(var.instance_type, terraform.workspace)
+  instance_type = each.value.instance_type
 
   providers = {
-    #aws = aws.eas #
+
+    aws.case1 = aws.west-1
+    aws.case2 = aws.west-2
+    #aws.destination = aws.west-2
+
+    #https://developer.hashicorp.com/terraform/language/providers/configuration
+    #https://developer.hashicorp.com/terraform/language/meta-arguments/module-providers
+    #https://developer.hashicorp.com/terraform/language/modules/develop/providers (proveedores dentro de modulos) 
+
   }
 
   #ami = "ami-0ea3c35c5c3284d82"
 
 }
 
-module "assign_eip" {
-
-  source       = "./modules/ElasticIp"
-  instance_aws = module.created_instance.aws_instance_id
-
-}
+#module "assign_eip" {
+#
+#  source       = "./modules/ElasticIp"
+#  instance_aws = module.created_instance.aws_instance_id
+#
+#}
 
 #module "iam_iam-user" {
 #  source  = "terraform-aws-modules/iam/aws//modules/iam-user"
