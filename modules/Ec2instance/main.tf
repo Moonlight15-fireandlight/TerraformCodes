@@ -1,19 +1,3 @@
-#resource "local_file" "state" {
-#        content = "This configuration have ${var.change-state} state"
-#        filename = "/root/${var.change-state}"
-#}
-
-data "aws_availability_zones" "available" {
-
-  state = "available"
-
-  filter {
-    name   = "zone-type"
-    values = ["availability-zone"]
-  }
-
-}
-
 data "aws_ami" "ubuntu" {
 
   most_recent = true             #la version mas reciente
@@ -26,106 +10,15 @@ data "aws_ami" "ubuntu" {
 
 }
 
-resource "aws_vpc" "main_vpc" {
-
-  cidr_block = var.vpc_cidr
-
-  provider = {
-    
-    aws = aws.case1
-    aws = aws.case2
-    
-  }
-  
-
-  enable_dns_hostnames = true
-
-  tags = {
-    Name = "vpc_terraform"
-  }
-}
-
-resource "aws_internet_gateway" "igw" {
-
-  vpc_id = aws_vpc.main_vpc.id #ya incluye el attachment al VPC
-
-  tags = {
-    Name = "igw_terraform"
-  }
-}
-
-resource "aws_subnet" "publicsunet1" {
-
-  vpc_id = aws_vpc.main_vpc.id
-
-  cidr_block = "172.16.0.0/20"
-  #availability_zone = "${var.region}a" 
-
-  availability_zone = data.aws_availability_zones.available.names[0]
-
-  tags = {
-    Name = "pubsunet_terraform"
-  }
-
-}
-
-resource "aws_subnet" "privatesubnet1" {
-
-  vpc_id            = aws_vpc.main_vpc.id
-  cidr_block        = "172.16.16.0/20"
-  availability_zone = data.aws_availability_zones.available.names[1]
-  #availability_zone = "${var.region}a" 
-
-  tags = {
-    Name = "privsubnet_terraform"
-  }
-
-}
-
-resource "aws_route_table" "private" {
-  vpc_id = aws_vpc.main_vpc.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    #nat_gateway_id = aws_nat_gateway.eks_nat_gw.id
-    gateway_id = aws_internet_gateway.igw.id
-  }
-
-  tags = {
-    Name = "routetable_private_terraform"
-  }
-}
-
-resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.main_vpc.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.igw.id
-
-  }
-  tags = {
-    Name = "routetable_public_terraform"
-  }
-}
-
-resource "aws_route_table_association" "topublic" {
-  subnet_id      = aws_subnet.publicsunet1.id
-  route_table_id = aws_route_table.public.id
-}
-
-resource "aws_route_table_association" "toprivate" {
-  subnet_id      = aws_subnet.privatesubnet1.id
-  route_table_id = aws_route_table.private.id
-}
-
 resource "aws_instance" "instancelinux01" {
+
+  count = length(var.subnet_id)
   #name = "terraform-testing" #agregar un nombre a la instancia
 
   #Numero de servidores en base al tipo de instancias que se muestra en la variable instance type
   #count = length(var.instance_type)
 
-  ami           = data.aws_ami.ubuntu.id
+  ami           = var.ami
   instance_type = var.instance_type
   key_name      = "DockerOregon"
   #count = length(var.instance_type)
@@ -148,7 +41,7 @@ resource "aws_instance" "instancelinux01" {
   }
 
   vpc_security_group_ids = [aws_security_group.securitygroup1.id]
-  subnet_id              = aws_subnet.publicsunet1.id
+  subnet_id              = var.subnet_id[count.index] # para una sola subred
   #subnet_id = module.vpc[each.key].public_subnets[*] #para lograr que una instancia este en su respectivo subred 
 
   associate_public_ip_address = true
@@ -179,6 +72,9 @@ resource "aws_instance" "instancelinux01" {
   #provisioner "local-exec" {
   #   command = "echo testing-provisioner-local-exec >> /home/ubuntu/localexecfile.txt"
   #}
+
+  #depends_on = [ aws_internet_gateway.igw ] #Como exportar esto
+
 }
 
 resource "aws_security_group" "securitygroup1" {
@@ -188,23 +84,34 @@ resource "aws_security_group" "securitygroup1" {
 
   #for_each = var.project
 
-  vpc_id = aws_vpc.main_vpc.id
+  vpc_id = var.vpc_id
 
+  dynamic "ingress" {
 
-  ingress {
+    for_each = var.inbound_ports
 
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    content {
+      from_port   = ingress.value
+      to_port     = ingress.value
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
 
+    }
   }
 
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+  dynamic "egress" {
+
+    for_each = var.outbound_ports
+
+    content {
+
+      from_port = egress.value
+      to_port   = egress.value
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+
+    }
+    
   }
 
 }
@@ -235,7 +142,7 @@ resource "aws_security_group" "securitygroup1" {
 
 output "aws_instance_id" {
 
-  value = aws_instance.instancelinux01.id
+  value = aws_instance.instancelinux01.*.id
 
   #value = aws_instance.instancelinux01[each.key].public_ip
   #value = { for p in sort(keys(var.project)) : p => aws_instance.instancelinux01[p].public_ip }

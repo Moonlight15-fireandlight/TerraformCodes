@@ -5,7 +5,7 @@ terraform {
     aws = {
       source  = "hashicorp/aws"
       version = "~> 5.73"
-      configuration_aliases = [ aws.case1, aws.case2 ]
+      #configuration_aliases = [ aws.case1, aws.case2 ]
     }
 
   }

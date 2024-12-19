@@ -13,3 +13,16 @@ terraform {
   required_version = "1.7.5"
 
 }
+
+provider "aws" {
+
+  region = "us-west-2"
+  
+}
+
+provider "aws" {
+
+  alias  = "california"
+  region = "us-west-1"
+
+}
